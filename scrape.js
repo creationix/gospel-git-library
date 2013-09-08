@@ -35,22 +35,74 @@ function getCatalog(language, callback) {
       });
     }
   });
-}  
+}
+
+var inspect = require('util').inspect;
+function log(obj) {
+  console.log(inspect(obj, {colors: true}));
+}
 
 var books = {};
+
+// getCatalog("en", function (err, catalog) {
+//   if (err) throw err;
+//   dump(catalog);
+//   var keys = Object.keys(books);
+//   keys.sort();
+//   log(keys);
+//   var book = books["/youth/learn/ap"];
+//   decompress(book, function (err, db) {
+//     if (err) throw err;
+//     log(book);
+//     log(db);
+//     db.get("SELECT * FROM bookmeta;", function (err, result) {
+//       if (err) throw err;
+//       log(result);
+//       var nodes = {};
+//       var prefixLength = book.gl_uri.length;
+//       db.each("SELECT * FROM node;", function (err, row) {
+//         if (err) throw err;
+//         var path = row.uri.substr(prefixLength);
+//         nodes[path] = row;
+//       }, function () {
+//         var keys = Object.keys(nodes);
+//         keys.sort();
+//         log(keys);
+//         log(nodes["/commandments/say"]);
+//       });
+//     });
+//   });
+// });
+
 
 getCatalog("en", function (err, catalog) {
   if (err) throw err;
   dump(catalog);
-  var keys = Object.keys(books);
-  keys.sort();
-  var book = books[keys[0]];
-  decompress(book, function (err, db) {
-    if (err) throw err;
-    console.log(book);
-    console.log(db);
+  Object.keys(books).forEach(function (uri) {
+    var book = books[uri];
+    decompress(book, function (err, db) {
+      if (err) throw err;
+      db.get("SELECT * FROM bookmeta;", function (err, result) {
+        if (err) throw err;
+        var nodes = book.nodes = {};
+        var prefixLength = uri.length;
+        db.each("SELECT * FROM node;", function (err, row) {
+          if (err) throw err;
+          console.log(row.uri);
+          var path = row.uri.substr(prefixLength);
+          nodes[path] = row;
+        }, function () {
+          
+          // var keys = Object.keys(nodes);
+          // keys.sort();
+          // log(keys);
+          // log(nodes["/commandments/say"]);
+        });
+      });
+    });
   });
 });
+
 
 function dump(cat) {
   cat.books.forEach(function (book) {
