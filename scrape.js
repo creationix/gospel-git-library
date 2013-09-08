@@ -82,22 +82,15 @@ getCatalog("en", function (err, catalog) {
     var book = books[uri];
     decompress(book, function (err, db) {
       if (err) throw err;
-      db.get("SELECT * FROM bookmeta;", function (err, result) {
+      var nodes = book.nodes = {};
+      var prefixLength = uri.length;
+      db.each("SELECT * FROM node;", function (err, row) {
         if (err) throw err;
-        var nodes = book.nodes = {};
-        var prefixLength = uri.length;
-        db.each("SELECT * FROM node;", function (err, row) {
-          if (err) throw err;
-          console.log(row.uri);
-          var path = row.uri.substr(prefixLength);
-          nodes[path] = row;
-        }, function () {
-          
-          // var keys = Object.keys(nodes);
-          // keys.sort();
-          // log(keys);
-          // log(nodes["/commandments/say"]);
-        });
+        console.log(row.uri);
+        var path = row.uri.substr(prefixLength);
+        nodes[path] = row;
+      }, function () {
+        db.close();
       });
     });
   });
@@ -118,7 +111,7 @@ function decompress(book, callback) {
   var path = urlParse(book.url).path;
   get(path, function (err, sqlite) {
     if (err) throw err;
-    var file = book.file.replace(/\.zbook$/, ".sqlite");
+    var file = book.file.replace(/\.zbook$/, ".sqlite3");
     fs.writeFile(file, sqlite, function (err) {
       if (err) return callback(err);
       var db = new sqlite3.Database(file, function (err) {
