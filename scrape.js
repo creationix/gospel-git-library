@@ -6,6 +6,7 @@ var catalogUrl, modifiedUrl, languagesUrl;
 function getCatalog(language, callback) {
   get("/crowdsource/Mobile/glweb2/config/gospellibrary/android/config.240.json", function (err, config) {
     if (err) return callback(err);
+    if (/^[0-9]+$/.test(language)) language = parseInt(language, 10);
     if (typeof language === "string") {
       var languagesQuery = config["languages.query"];
       return get(languagesQuery, function (err, langs) {
@@ -83,11 +84,11 @@ var wrap = require('js-git/lib/repo.js');
 var fs = require('fs');
 
 
-getCatalog("en", function (err, catalog) {
+getCatalog(process.argv[2], function (err, catalog) {
   if (err) throw err;
   dump(catalog);
   Object.keys(books).forEach(function (uri) {
-    if (!(/^\/youth\/learn\/ap/).test(uri)) return;
+//    if (!(/^\/youth\/learn\/ap/).test(uri)) return;
     var book = books[uri];
     decompress(book, function (err, db) {
       if (err) throw err;
