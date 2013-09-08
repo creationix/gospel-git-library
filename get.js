@@ -8,7 +8,15 @@ function get(path, callback) {
     path: path
   }, function (res) {
     var body;
-    if (res.headers["content-type"] === "application/x-deflate") {
+    var inflate = false;
+    if ((/\.zlib$/).test(path)) {
+      inflate = true;
+      path = path.substr(0, path.length - 5);
+    }
+    else if ((/\.zbook/).test(path)) {
+      inflate = true;
+    }
+    if (inflate) {
       body = zlib.createInflate();
       res.pipe(body);
     }
@@ -23,12 +31,10 @@ function get(path, callback) {
     });
     body.on("end", function () {
       var body = Buffer.concat(parts, length);
-      body = JSON.parse(body);
-      callback(null, {
-        statusCode: res.statusCode,
-        headers: res.headers,
-        body: body
-      });
+      if ((/\.json$/).test(path)) {
+        body = JSON.parse(body);
+      }
+      callback(null, body);
     });
   });
 }
