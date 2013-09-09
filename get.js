@@ -38,3 +38,40 @@ function get(path, callback) {
     });
   });
 }
+
+get.catalog = getCatalog;
+function getCatalog(language, callback) {
+  if (!language) language = "en";
+  get("/crowdsource/Mobile/glweb2/config/gospellibrary/android/config.240.json", function (err, config) {
+    if (err) return callback(err);
+    if (/^[0-9]+$/.test(language)) language = parseInt(language, 10);
+    if (typeof language === "string") {
+      var languagesQuery = config["languages.query"];
+      return get(languagesQuery, function (err, langs) {
+        if (err) return callback(err);
+        langs = langs.languages;
+        for (var i = 0, l = langs.length; i < l; ++i) {
+          var lang = langs[i];
+          if (language === lang.code ||
+              language === lang.code_three ||
+              language === lang.name ||
+              language === lang.end_name) {
+            language = lang.id;
+            return load();
+          }
+        }
+        console.log("Warning: Unknown language " + language);
+        language = 1;
+        load();
+      });
+    }
+    load();
+    function load() {
+      var catalogQuery = config["catalog.query"].replace("@language", language).replace("@platform", 4);
+      get(catalogQuery, function (err, catalog) {
+        if (err) return callback(err);
+        callback(null, catalog.catalog);
+      });
+    }
+  });
+}
