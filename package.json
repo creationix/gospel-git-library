@@ -1,0 +1,31 @@
+{
+  "name": "gospel-git-library",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Convert the gospel library database to git",
+  "main": "scrape.js",
+  "dependencies": {
+    "js-git": "~0.3.3",
+    "js-git-node-platform": "~0.2.2",
+    "msgpack-js": "~0.3.0",
+    "sqlite3": "~2.1.15"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/creationix/gospel-git-library.git"
+  },
+  "keywords": [
+    "js-git",
+    "msgpack",
+    "database"
+  ],
+  "author": "Tim Caswell <tim@creationix.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/creationix/gospel-git-library/issues"
+  }
+}
