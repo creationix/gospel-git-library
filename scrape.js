@@ -38,8 +38,8 @@ function dump(catalog) {
 
 function saveBook(book) {
   var uri = book.gl_uri;
+  if (!(/^\/scriptures\/bofm/).test(uri)) return;
   isBook[uri] = true;
-  // if (!(/^\/youth\/learn/).test(uri)) return;
   console.log(uri);
   pending++;
   decompress(book, function (err, db) {
@@ -50,7 +50,7 @@ function saveBook(book) {
       saveBlob(row, row.uri);
     }, function () {
       db.close();
-      fs.unlink(db.filename);
+      // fs.unlink(db.filename);
       check();
     });
   });
@@ -73,7 +73,7 @@ function decompress(book, callback) {
 
 function saveBlob(obj, path) {
   pending++;
-  var buf = msgpack.encode(obj);
+  var buf = new Buffer(JSON.stringify(obj));
   repo.saveBlob(buf, function (err, hash) {
     if (err) throw err;
     var obj = files;
@@ -90,7 +90,7 @@ function saveBlob(obj, path) {
       }
       obj = tmp;
     });
-    obj[basename(path) + ".msgpack"] = hash;
+    obj[basename(path) + ".json"] = hash;
     check();
   });
 }
