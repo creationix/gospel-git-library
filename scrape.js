@@ -1,15 +1,15 @@
 var get = require('./get.js');
 var urlParse = require('url').parse;
 var inspect = require('util').inspect;
-var msgpack = require('msgpack-js');
 var dirname = require('path').dirname;
 var basename = require('path').basename;
 var fs = require('fs');
-var sqlite3 = require('sqlite3');
 require('js-git/lib/platform.js')(require('js-git-node-platform'));
 var fsDb = require('js-git/lib/fs-db.js');
 var wrap = require('js-git/lib/repo.js');
+var convertSqlite = require('./convertSqlite.js');
 
+var bookQueue = [];
 // Nested objects representing all the files in directory structure
 var files = {};
 // path to dir hash mapping for books
@@ -18,6 +18,7 @@ var branches = {};
 var isBook = {};
 var author = "Tim Caswell <tim@creationix.com>";
 var committer = "JS-Git <js-git@creationix.com>";
+var numBooks;
 
 var pending = 0;
 var repo = wrap(fsDb('gospel-library.git', true));
@@ -26,56 +27,79 @@ repo.init(function (err) {
   get.catalog(process.argv[2], function (err, catalog) {
     if (err) throw err;
     dump(catalog);
+    numBooks = bookQueue.length;
+    consume();
   });
 });
 
 function dump(catalog) {
-  pending++;
   catalog.books.forEach(saveBook);
   catalog.folders.forEach(dump);
-  check();
 }
 
 function saveBook(book) {
+  if (!(/^\/scriptures/).test(book.gl_uri)) return;
+  bookQueue.push(book);
+}
+
+function consume() {
+  var book = bookQueue.shift();
+  if (!book) return saveTree(files, onSaveAll);
   var uri = book.gl_uri;
-  if (!(/^\/scriptures\/bofm/).test(uri)) return;
   isBook[uri] = true;
-  console.log(uri);
-  pending++;
-  decompress(book, function (err, db) {
+  var clear = "\r\033[K";
+  console.log("%s (%s/%s)", uri, numBooks - bookQueue.length, numBooks);
+  // TODO: save book somewhere - saveBlob(book, uri + "/.book");
+  var file = book.file.replace(/\.zbook$/, ".sqlite3");
+  var numNodes, nodes, media, bookmeta;
+  process.stdout.write("Downloading sqlite from church database");
+  get(urlParse(book.url).path, onSqlite);
+
+  function onSqlite(err, sqlite) {
     if (err) throw err;
-    saveBlob(book, uri + "/.book");
-    db.each("SELECT * FROM node;", function (err, row) {
-      if (err) throw err;
-      saveBlob(row, row.uri);
-    }, function () {
-      db.close();
-      // fs.unlink(db.filename);
-      check();
-    });
-  });
+    process.stdout.write(clear + "Saving sqlite data to disk.");
+    fs.writeFile(file, sqlite, onWriteSqlite);
+  }
+
+  function onWriteSqlite(err) {
+    if (err) throw err;
+    process.stdout.write(clear + "Extracting data from sqlite.");
+    convertSqlite(file, onConvertSqlite);
+  }
+
+  function onConvertSqlite(err, db) {
+    if (err) throw err;
+    nodes = db.node;
+    media = db.media; // TODO: save this somewhere?
+    bookmeta = db.bookmeta[0]; // TODO: save this somewhere?
+    process.stdout.write(clear + "Deleting temporary sqlite file.");
+    fs.unlink(file, onUnlink);
+  }
+
+  function onUnlink(err) {
+    if (err) throw err;
+    numNodes = nodes.length;
+    nextNode();
+  }
+
+  function nextNode(err) {
+    if (err) throw err;
+    var node = nodes.shift();
+    if (!node) {
+      process.stdout.write(clear);
+      return consume();
+    }
+    var num = numNodes - nodes.length;
+    process.stdout.write(clear + "Saving node " + num + "/" + numNodes);
+    saveBlob(node.uri + ".node", node, nextNode);
+  }
+
 }
 
-function decompress(book, callback) {
-  var path = urlParse(book.url).path;
-  get(path, function (err, sqlite) {
-    if (err) throw err;
-    var file = book.file.replace(/\.zbook$/, ".sqlite3");
-    fs.writeFile(file, sqlite, function (err) {
-      if (err) return callback(err);
-      var db = new sqlite3.Database(file, function (err) {
-        if (err) return callback(err);
-        callback(null, db);
-      });
-    });
-  });
-}
-
-function saveBlob(obj, path) {
-  pending++;
-  var buf = new Buffer(JSON.stringify(obj));
-  repo.saveBlob(buf, function (err, hash) {
-    if (err) throw err;
+function saveBlob(path, value, callback) {
+  var blob = new Buffer(JSON.stringify(value) + "\n");
+  repo.saveBlob(blob, function (err, hash) {
+    if (err) return callback(err);
     var obj = files;
     var dir = "";
     dirname(path).split("/").forEach(function (part) {
@@ -91,13 +115,8 @@ function saveBlob(obj, path) {
       obj = tmp;
     });
     obj[basename(path) + ".json"] = hash;
-    check();
+    callback();
   });
-}
-
-function check() {
-  if (--pending) return;
-  saveTree(files, onSaveAll);
 }
 
 function onSaveAll(err, hash) {

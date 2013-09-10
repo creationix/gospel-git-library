@@ -11,9 +11,9 @@ function convert(file, callback) {
   var all = {};
   var query = names.map(function (name) {
     all[name] = [];
-    return "SELECT '" + name + "' AS 'table', * FROM " + name + " LIMIT 10;";
+    return "SELECT '" + name + "' AS 'table', * FROM " + name + ";";
   }).join("");
-  
+
   var child = spawn("sqlite3", ["-header", "-csv", file, query]);
   child.stdout.setEncoding('utf8');
   child.stdout.on('data', createParser(onRow));
@@ -21,7 +21,6 @@ function convert(file, callback) {
     callback(null, all);
   });
   function onRow(row) {
-    console.log(row);
     state = state(row);
   }
 
@@ -31,7 +30,7 @@ function convert(file, callback) {
     columns = values;
     return $row;
   }
-  
+
   function $row(values) {
     if (values[0] === "table") return $headers(values);
     name = values.shift();
@@ -46,7 +45,7 @@ function convert(file, callback) {
     all[name].push(row);
     return $row;
   }
-  
+
 }
 
 
@@ -56,10 +55,10 @@ function createParser(onRow) {
   var state = $normal;
   return function (chunk) {
     for (var i = 0, l = chunk.length; i < l; ++i) {
-      state = state(chunk[i]); 
+      state = state(chunk[i]);
     }
   };
-  
+
   function push() {
     if (/^[0-9]+$/.test(entry)) entry = parseInt(entry, 10);
     row.push(entry);
@@ -83,7 +82,7 @@ function createParser(onRow) {
     }
     return $normal;
   }
-  
+
   function $quote(char) {
     if (char === '"') {
       return $maybe;
