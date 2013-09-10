@@ -38,7 +38,7 @@ function dump(catalog) {
 }
 
 function saveBook(book) {
-  if (!(/^\/scriptures/).test(book.gl_uri)) return;
+  if (!(/^(?:\/scriptures|\/youth|\/manual|\/family|\/general-conference\/201|\/young-men|\/ensign\/2013|\/friend\/2013|\/liahona\/2013|\/new-era\/2013|\/video)/).test(book.gl_uri)) return;
   bookQueue.push(book);
 }
 
