@@ -7,10 +7,10 @@ module.exports = convert;
 function convert(file, callback) {
   var state = $headers;
   var names = ["node", "media", "bookmeta"];
-  var name, rows, columns;
+  var name, columns;
   var all = {};
-  
   var query = names.map(function (name) {
+    all[name] = [];
     return "SELECT '" + name + "' AS 'table', * FROM " + name + " LIMIT 10;";
   }).join("");
   
@@ -21,21 +21,20 @@ function convert(file, callback) {
     callback(null, all);
   });
   function onRow(row) {
+    console.log(row);
     state = state(row);
   }
 
   function $headers(values) {
     name = names.shift();
-    rows = [];
-    all[name] = rows;
     assert.equal(values.shift(), "table");
     columns = values;
     return $row;
   }
   
   function $row(values) {
-    if (values[0] !== name) return $headers(values);
-    values.shift();
+    if (values[0] === "table") return $headers(values);
+    name = values.shift();
     var row = {};
     for (var i = 0, l = values.length; i < l; i++) {
       row[columns[i]] = values[i];
@@ -44,7 +43,7 @@ function convert(file, callback) {
       row.content = row.content ? convertHtml(row.content).slice(1) : null;
       row.refs = row.refs ? convertHtml(row.refs).slice(1) : null;
     }
-    rows.push(row);
+    all[name].push(row);
     return $row;
   }
   
